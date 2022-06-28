@@ -71,6 +71,28 @@ public class Matrix4 {
         return ret;
     }
 
+    public static Matrix4 quickInverse(Matrix4 mat) {
+        Matrix4 ret = new Matrix4();
+        ret.elements[0][0] = mat.elements[0][0];
+        ret.elements[0][1] = mat.elements[1][0];
+        ret.elements[0][2] = mat.elements[2][0];
+        ret.elements[0][3] = 0.0f;
+        ret.elements[1][0] = mat.elements[0][1];
+        ret.elements[1][1] = mat.elements[1][1];
+        ret.elements[1][2] = mat.elements[2][1];
+        ret.elements[1][3] = 0.0f;
+        ret.elements[2][0] = mat.elements[0][2];
+        ret.elements[2][1] = mat.elements[1][2];
+        ret.elements[2][2] = mat.elements[2][2];
+        ret.elements[2][3] = 0.0f;
+        ret.elements[3][0] = -(mat.elements[3][0] * mat.elements[0][0] + mat.elements[3][1] * mat.elements[1][0] + mat.elements[3][2] * mat.elements[2][0]);
+        ret.elements[3][1] = -(mat.elements[3][0] * mat.elements[0][1] + mat.elements[3][1] * mat.elements[1][1] + mat.elements[3][2] * mat.elements[2][1]);
+        ret.elements[3][2] = -(mat.elements[3][0] * mat.elements[0][2] + mat.elements[3][1] * mat.elements[1][2] + mat.elements[3][2] * mat.elements[2][2]);
+        ret.elements[3][3] = 1.0f;
+
+        return ret;
+    }
+
     public static Matrix4 identity() {
         Matrix4 mat = new Matrix4();
         mat.elements[0][0] = 1.0f;
@@ -149,6 +171,38 @@ public class Matrix4 {
         ret.elements[3][0] = x;
         ret.elements[3][1] = y;
         ret.elements[3][2] = z;
+
+        return ret;
+    }
+
+    public static Matrix4 pointAt(Vector3 pos, Vector3 target, Vector3 up) {
+        Matrix4 ret = new Matrix4();
+
+        Vector3 forward = target.subtract(pos);
+        forward = forward.normalize();
+
+        float dp = up.dotProduct(forward);
+        Vector3 a = forward.multiplyScaler(dp);
+        Vector3 actualUp = up.subtract(a);
+
+        Vector3 right = actualUp.crossProduct(forward);
+
+        ret.elements[0][0] = right.x;
+        ret.elements[0][1] = right.y;
+        ret.elements[0][2] = right.z;
+        ret.elements[0][3] = 0.0f;
+        ret.elements[1][0] = actualUp.x;
+        ret.elements[1][1] = actualUp.y;
+        ret.elements[1][2] = actualUp.z;
+        ret.elements[1][3] = 0.0f;
+        ret.elements[2][0] = forward.x;
+        ret.elements[2][1] = forward.y;
+        ret.elements[2][2] = forward.z;
+        ret.elements[2][3] = 0.0f;
+        ret.elements[3][0] = pos.x;
+        ret.elements[3][1] = pos.y;
+        ret.elements[3][2] = pos.z;
+        ret.elements[3][3] = 1.0f;
 
         return ret;
     }

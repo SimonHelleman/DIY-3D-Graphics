@@ -14,10 +14,11 @@ public class Application extends Console {
 
     // Not really a camera, but close enough for now
     Vector4 camera;
+    Vector3 lookDirection;
 
     Vector3 light;
 
-    float theta = 1.0f;
+    float theta = 0.0f;
 
     boolean wireframeMode = false;
 
@@ -33,7 +34,7 @@ public class Application extends Console {
         super(WINDOW_WIDTH, WINDOW_HEIGHT);
         setBackgroundColor(Color.BLACK);
 
-        mesh = Mesh.generateFromObj("Teapot.obj");
+        mesh = Mesh.generateFromObj("axis.obj");
         // mesh = Mesh.getCube();
         projection = Matrix4.projection(0.1f, 1000.0f, 90.0f, (WINDOW_HEIGHT * 1.0f) / (WINDOW_WIDTH * 1.0f));
         theta = 0.0f;
@@ -42,7 +43,7 @@ public class Application extends Console {
 
         camera = new Vector4(0.0f, 0.0f, 0.0f);
 
-        light = new Vector3(0.0f, 0.0f, -1.0f);
+        light = new Vector3(0.0f, 1.0f, -1.0f);
         light = light.normalize();
 
         ft = new FrameTimer();
@@ -54,9 +55,16 @@ public class Application extends Console {
     public void draw() {
         Matrix4 rotZ = Matrix4.rotationZ(theta);
         Matrix4 rotX = Matrix4.rotationX(theta * 0.5f);
-        Matrix4 translation = Matrix4.translation(0.0f, 0.0f, 8.0f);
+        Matrix4 translation = Matrix4.translation(0.0f, 0.0f, 16.0f);
         Matrix4 world = rotZ.multiply(rotX);
         world = world.multiply(translation);
+
+        lookDirection = new Vector3(0.0f, 0.0f, 1.0f);
+        Vector3 up = new Vector3(0.0f, 1.0f, 0.0f);
+        Vector3 target = (new Vector3(camera)).add(lookDirection);
+
+        Matrix4 cameraMatrix = Matrix4.pointAt(new Vector3(camera), target, up);
+        Matrix4 viewMatrix = Matrix4.quickInverse(cameraMatrix);
 
         ArrayList<Triangle> renderList = new ArrayList<Triangle>();
         Iterator<Triangle> iter = mesh.iterator();
@@ -65,6 +73,7 @@ public class Application extends Console {
 
             Triangle projected = new Triangle();
             Triangle transformed = new Triangle();
+            Triangle viewed = new Triangle();
 
             transformed.vertices[0] = Matrix4.multiply(t.vertices[0], world);
             transformed.vertices[1] = Matrix4.multiply(t.vertices[1], world);
@@ -83,13 +92,24 @@ public class Application extends Console {
 
                 projected.luminescence = normal.dotProduct(light);
 
-                projected.vertices[0] = Matrix4.multiply(transformed.vertices[0], projection);
-                projected.vertices[1] = Matrix4.multiply(transformed.vertices[1], projection);
-                projected.vertices[2] = Matrix4.multiply(transformed.vertices[2], projection);
+                viewed.vertices[0] = Matrix4.multiply(transformed.vertices[0], viewMatrix);
+                viewed.vertices[1] = Matrix4.multiply(transformed.vertices[1], viewMatrix);
+                viewed.vertices[2] = Matrix4.multiply(transformed.vertices[2], viewMatrix);
+
+                projected.vertices[0] = Matrix4.multiply(viewed.vertices[0], projection);
+                projected.vertices[1] = Matrix4.multiply(viewed.vertices[1], projection);
+                projected.vertices[2] = Matrix4.multiply(viewed.vertices[2], projection);
 
                 projected.vertices[0] = projected.vertices[0].divideScaler(projected.vertices[0].w);
                 projected.vertices[1] = projected.vertices[1].divideScaler(projected.vertices[1].w);
                 projected.vertices[2] = projected.vertices[2].divideScaler(projected.vertices[2].w);
+
+                projected.vertices[0].x *= -1;
+                projected.vertices[1].x *= -1;
+                projected.vertices[2].x *= -1;
+                projected.vertices[0].y *= -1;
+                projected.vertices[1].y *= -1;
+                projected.vertices[2].y *= -1;
 
                 // Translate NDC from [-1, 1] to [0, 2]
                 projected.vertices[0].x += 1.0f;
@@ -99,6 +119,8 @@ public class Application extends Console {
                 projected.vertices[0].y += 1.0f;
                 projected.vertices[1].y += 1.0f;
                 projected.vertices[2].y += 1.0f;
+
+                
 
                 // scale to window
                 projected.vertices[0].x *= 0.5f * (float) WINDOW_WIDTH;
@@ -148,7 +170,31 @@ public class Application extends Console {
         }
 
         if (!isKeyDown(VK_CONTROL)) {
-            theta += 0.97f * dt;
+            //theta += 0.97f * dt;
+        }
+
+        if (isKeyDown(VK_UP)) {
+            camera.y += 8.0f * dt;
+        }
+
+        if (isKeyDown(VK_DOWN)) {
+            camera.y -= 8.0f * dt;
+        }
+
+        if (isKeyDown(VK_LEFT)) {
+            camera.x -= 8.0f * dt;
+        }
+
+        if (isKeyDown(VK_RIGHT)) {
+            camera.x += 8.0f * dt;
+        }
+
+        if (isKeyDown('W')) {
+            camera.z += 8.0f * dt;
+        }
+
+        if (isKeyDown('S')) {
+            camera.z -= 8.0f * dt;
         }
 
         wireframeMode = isKeyDown(' ');
@@ -158,6 +204,7 @@ public class Application extends Console {
         float dt = ft.mark();
         update(dt);
         draw();
+        //System.out.printf("%s %s\n", camera, light);
     }
 
     public void drawTriangle(int x1, int y1, int x2, int y2, int x3, int y3) {

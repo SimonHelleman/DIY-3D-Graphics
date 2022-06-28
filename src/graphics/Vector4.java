@@ -69,4 +69,9 @@ public class Vector4 {
     public Vector4 divideScaler(float val) {
         return new Vector4(x / val, y / val, z / val, w / val);
     }
+
+    @Override
+    public String toString() {
+        return String.format("|{%f, %f, %f, %f}| = %f", x, y, z, w, magnitude());
+    }
 }
