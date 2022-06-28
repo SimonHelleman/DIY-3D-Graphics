@@ -63,7 +63,7 @@ public class Vector4 {
     }
 
     public Vector4 multiplyScaler(float val) {
-        return new Vector4(x / val, y / val, z / val, w / val);
+        return new Vector4(x * val, y * val, z * val, w * val);
     }
 
     public Vector4 divideScaler(float val) {

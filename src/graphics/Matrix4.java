@@ -135,9 +135,8 @@ public class Matrix4 {
     public static Matrix4 rotationY(float theta) {
         Matrix4 ret = identity();
 
-        float radians = MathUtil.radiansf(theta);
-        float cos = MathUtil.cosf(radians);
-        float sin = MathUtil.sinf(radians);
+        float cos = MathUtil.cosf(theta);
+        float sin = MathUtil.sinf(theta);
 
         ret.elements[0][0] = cos;
         ret.elements[0][2] = -sin;

@@ -13,8 +13,11 @@ public class Application extends Console {
     Matrix4 projection;
 
     // Not really a camera, but close enough for now
-    Vector4 camera;
-    Vector3 lookDirection;
+    Vector3 camera;
+    Vector4 lookDirection;
+
+    float yaw;
+    float pitch;
 
     Vector3 light;
 
@@ -34,14 +37,16 @@ public class Application extends Console {
         super(WINDOW_WIDTH, WINDOW_HEIGHT);
         setBackgroundColor(Color.BLACK);
 
-        mesh = Mesh.generateFromObj("axis.obj");
+        mesh = Mesh.generateFromObj("Teapot.obj");
         // mesh = Mesh.getCube();
         projection = Matrix4.projection(0.1f, 1000.0f, 90.0f, (WINDOW_HEIGHT * 1.0f) / (WINDOW_WIDTH * 1.0f));
         theta = 0.0f;
 
         rng = new Random();
 
-        camera = new Vector4(0.0f, 0.0f, 0.0f);
+        camera = new Vector3(0.0f, 0.0f, 0.0f);
+
+        lookDirection = new Vector4();
 
         light = new Vector3(0.0f, 1.0f, -1.0f);
         light = light.normalize();
@@ -53,17 +58,22 @@ public class Application extends Console {
     }
 
     public void draw() {
-        Matrix4 rotZ = Matrix4.rotationZ(theta);
-        Matrix4 rotX = Matrix4.rotationX(theta * 0.5f);
+        Matrix4 rotZ = Matrix4.rotationZ(0.0f); //Matrix4.rotationZ(theta);
+        Matrix4 rotX = Matrix4.rotationX(0.0f);//Matrix4.rotationX(theta * 0.5f);
         Matrix4 translation = Matrix4.translation(0.0f, 0.0f, 16.0f);
         Matrix4 world = rotZ.multiply(rotX);
         world = world.multiply(translation);
 
-        lookDirection = new Vector3(0.0f, 0.0f, 1.0f);
+        
         Vector3 up = new Vector3(0.0f, 1.0f, 0.0f);
-        Vector3 target = (new Vector3(camera)).add(lookDirection);
+        Vector3 target = new Vector3(0.0f, 0.0f, 1.0f);
+        Matrix4 rotY = Matrix4.rotationY(yaw);
 
-        Matrix4 cameraMatrix = Matrix4.pointAt(new Vector3(camera), target, up);
+        lookDirection = Matrix4.multiply(new Vector4(target, 1.0f), rotY);
+
+        target = camera.add(new Vector3(lookDirection));
+
+        Matrix4 cameraMatrix = Matrix4.pointAt(camera, target, up);
         Matrix4 viewMatrix = Matrix4.quickInverse(cameraMatrix);
 
         ArrayList<Triangle> renderList = new ArrayList<Triangle>();
@@ -79,17 +89,17 @@ public class Application extends Console {
             transformed.vertices[1] = Matrix4.multiply(t.vertices[1], world);
             transformed.vertices[2] = Matrix4.multiply(t.vertices[2], world);
 
-            Vector4 line1 = transformed.vertices[1].subtract(transformed.vertices[0]);
-            Vector4 line2 = transformed.vertices[2].subtract(transformed.vertices[0]);
+            Vector3 line1 = new Vector3(transformed.vertices[1].subtract(transformed.vertices[0]));
+            Vector3 line2 = new Vector3(transformed.vertices[2].subtract(transformed.vertices[0]));
 
-            Vector3 normal = (new Vector3(line1)).crossProduct(new Vector3(line2));
+            Vector3 normal = line1.crossProduct(line2);
 
             normal = normal.normalize();
 
             // don't render any triangles out of view by the camera (i.e. triangle culling)
             // any vertex on the triangle can be used since they all lie in the same plane
-            if (normal.dotProduct(new Vector3(transformed.vertices[0].subtract(camera))) < 0) {
-
+            // Vec3 dotVec = Vec4 - Vec3
+            if (normal.dotProduct((new Vector3(transformed.vertices[0])).subtract(camera)) < 0.0f) {
                 projected.luminescence = normal.dotProduct(light);
 
                 viewed.vertices[0] = Matrix4.multiply(transformed.vertices[0], viewMatrix);
@@ -110,6 +120,8 @@ public class Application extends Console {
                 projected.vertices[0].y *= -1;
                 projected.vertices[1].y *= -1;
                 projected.vertices[2].y *= -1;
+
+
 
                 // Translate NDC from [-1, 1] to [0, 2]
                 projected.vertices[0].x += 1.0f;
@@ -182,19 +194,33 @@ public class Application extends Console {
         }
 
         if (isKeyDown(VK_LEFT)) {
-            camera.x -= 8.0f * dt;
-        }
-
-        if (isKeyDown(VK_RIGHT)) {
             camera.x += 8.0f * dt;
         }
 
+        if (isKeyDown(VK_RIGHT)) {
+            camera.x -= 8.0f * dt;
+        }
+
+        Vector3 forward = new Vector3(lookDirection.multiplyScaler(8.0f * dt));
+
+        //System.out.printf("look dir: %s\n", lookDirection);
+        //System.out.printf("forward: %s\n", forward);
+        //System.out.printf("yaw: %s\n", yaw);
+
         if (isKeyDown('W')) {
-            camera.z += 8.0f * dt;
+            camera = camera.add(forward);
         }
 
         if (isKeyDown('S')) {
-            camera.z -= 8.0f * dt;
+            camera = camera.subtract(forward);
+        }
+
+        if (isKeyDown('A')) {
+            yaw += 2.0f * dt;
+        }
+
+        if (isKeyDown('D')) {
+            yaw -= 2.0f * dt;
         }
 
         wireframeMode = isKeyDown(' ');
@@ -204,6 +230,7 @@ public class Application extends Console {
         float dt = ft.mark();
         update(dt);
         draw();
+        //System.out.println(camera);
         //System.out.printf("%s %s\n", camera, light);
     }
 
