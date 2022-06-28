@@ -13,7 +13,7 @@ public class Application extends Console {
     Matrix4 projection;
 
     // Not really a camera, but close enough for now
-    Vector3 camera;
+    Vector4 camera;
 
     Vector3 light;
 
@@ -32,7 +32,7 @@ public class Application extends Console {
     public Application() throws IOException {
         super(WINDOW_WIDTH, WINDOW_HEIGHT);
         setBackgroundColor(Color.BLACK);
-        
+
         mesh = Mesh.generateFromObj("Teapot.obj");
         // mesh = Mesh.getCube();
         projection = Matrix4.projection(0.1f, 1000.0f, 90.0f, (WINDOW_HEIGHT * 1.0f) / (WINDOW_WIDTH * 1.0f));
@@ -40,7 +40,7 @@ public class Application extends Console {
 
         rng = new Random();
 
-        camera = new Vector3(0.0f, 0.0f, 0.0f);
+        camera = new Vector4(0.0f, 0.0f, 0.0f);
 
         light = new Vector3(0.0f, 0.0f, -1.0f);
         light = light.normalize();
@@ -54,46 +54,44 @@ public class Application extends Console {
     public void draw() {
         Matrix4 rotZ = Matrix4.rotationZ(theta);
         Matrix4 rotX = Matrix4.rotationX(theta * 0.5f);
+        Matrix4 translation = Matrix4.translation(0.0f, 0.0f, 8.0f);
+        Matrix4 world = rotZ.multiply(rotX);
+        world = world.multiply(translation);
 
         ArrayList<Triangle> renderList = new ArrayList<Triangle>();
         Iterator<Triangle> iter = mesh.iterator();
         while (iter.hasNext()) {
             Triangle t = iter.next();
 
-            Triangle rotatedZ = new Triangle();
-            Triangle rotatedX = new Triangle();
-            Triangle translated = new Triangle();
             Triangle projected = new Triangle();
+            Triangle transformed = new Triangle();
 
-            rotatedZ.vertices[0] = Matrix4.multiply(t.vertices[0], rotZ);
-            rotatedZ.vertices[1] = Matrix4.multiply(t.vertices[1], rotZ);
-            rotatedZ.vertices[2] = Matrix4.multiply(t.vertices[2], rotZ);
+            transformed.vertices[0] = Matrix4.multiply(t.vertices[0], world);
+            transformed.vertices[1] = Matrix4.multiply(t.vertices[1], world);
+            transformed.vertices[2] = Matrix4.multiply(t.vertices[2], world);
 
-            rotatedX.vertices[0] = Matrix4.multiply(rotatedZ.vertices[0], rotX);
-            rotatedX.vertices[1] = Matrix4.multiply(rotatedZ.vertices[1], rotX);
-            rotatedX.vertices[2] = Matrix4.multiply(rotatedZ.vertices[2], rotX);
+            Vector4 line1 = transformed.vertices[1].subtract(transformed.vertices[0]);
+            Vector4 line2 = transformed.vertices[2].subtract(transformed.vertices[0]);
 
-            translated = new Triangle(rotatedX);
-            translated.vertices[0].z += 4.0f;
-            translated.vertices[1].z += 4.0f;
-            translated.vertices[2].z += 4.0f;
-
-            Vector3 line1 = translated.vertices[1].subtract(translated.vertices[0]);
-            Vector3 line2 = translated.vertices[2].subtract(translated.vertices[0]);
-            Vector3 normal = line1.crossProduct(line2);
+            Vector3 normal = (new Vector3(line1)).crossProduct(new Vector3(line2));
 
             normal = normal.normalize();
 
-            // don't render any triangles out of view by the camera
+            // don't render any triangles out of view by the camera (i.e. triangle culling)
             // any vertex on the triangle can be used since they all lie in the same plane
-            if (normal.dotProduct(translated.vertices[0].subtract(camera)) < 0) {
+            if (normal.dotProduct(new Vector3(transformed.vertices[0].subtract(camera))) < 0) {
 
                 projected.luminescence = normal.dotProduct(light);
 
-                projected.vertices[0] = Matrix4.multiply(translated.vertices[0], projection);
-                projected.vertices[1] = Matrix4.multiply(translated.vertices[1], projection);
-                projected.vertices[2] = Matrix4.multiply(translated.vertices[2], projection);
+                projected.vertices[0] = Matrix4.multiply(transformed.vertices[0], projection);
+                projected.vertices[1] = Matrix4.multiply(transformed.vertices[1], projection);
+                projected.vertices[2] = Matrix4.multiply(transformed.vertices[2], projection);
 
+                projected.vertices[0] = projected.vertices[0].divideScaler(projected.vertices[0].w);
+                projected.vertices[1] = projected.vertices[1].divideScaler(projected.vertices[1].w);
+                projected.vertices[2] = projected.vertices[2].divideScaler(projected.vertices[2].w);
+
+                // Translate NDC from [-1, 1] to [0, 2]
                 projected.vertices[0].x += 1.0f;
                 projected.vertices[1].x += 1.0f;
                 projected.vertices[2].x += 1.0f;
@@ -102,6 +100,7 @@ public class Application extends Console {
                 projected.vertices[1].y += 1.0f;
                 projected.vertices[2].y += 1.0f;
 
+                // scale to window
                 projected.vertices[0].x *= 0.5f * (float) WINDOW_WIDTH;
                 projected.vertices[1].x *= 0.5f * (float) WINDOW_WIDTH;
                 projected.vertices[2].x *= 0.5f * (float) WINDOW_WIDTH;
@@ -115,7 +114,6 @@ public class Application extends Console {
             }
         }
 
-
         Collections.sort(renderList);
 
         synchronized (this) {
@@ -127,7 +125,8 @@ public class Application extends Console {
                     setColor(new Color(colorVal, colorVal, colorVal));
                 } else {
                     setColor(Color.BLACK);
-                    //System.err.printf("INVALID COLOUR: %d theta = %.2f\n", colorVal, Math.toDegrees(Math.acos(t.luminescence)));
+                    // System.err.printf("INVALID COLOUR: %d theta = %.2f\n", colorVal,
+                    // Math.toDegrees(Math.acos(t.luminescence)));
                 }
 
                 if (wireframeMode) {
@@ -135,13 +134,12 @@ public class Application extends Console {
                             t.vertices[2].y);
                 } else {
                     fillTriangle(t.vertices[0].x, t.vertices[0].y, t.vertices[1].x, t.vertices[1].y, t.vertices[2].x,
-                    t.vertices[2].y);
+                            t.vertices[2].y);
                 }
             }
         }
     }
 
-    
     public void update(float dt) {
 
         if (System.currentTimeMillis() - lastTime > 1000) {

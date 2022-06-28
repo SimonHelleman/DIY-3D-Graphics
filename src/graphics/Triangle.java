@@ -1,36 +1,39 @@
 package graphics;
 
 public class Triangle implements Comparable<Triangle> {
-    public static int NUM_VERTICIES = 3;
-    public Vector3[] vertices;
+    // I guess following best practices sometimes means stating the obvious
+    public static final int NUM_VERTICES = 3;
+
+    public final Vector4[] vertices;
 
     public float luminescence;
 
     public Triangle() {
-        vertices = new Vector3[NUM_VERTICIES];
+        vertices = new Vector4[NUM_VERTICES];
 
-        for (int i = 0; i < NUM_VERTICIES; i++) {
-            vertices[i] = new Vector3();
+        for (int i = 0; i < NUM_VERTICES; i++) {
+            vertices[i] = new Vector4();
         }
     }
 
     public Triangle(Triangle other) {
-        vertices = new Vector3[NUM_VERTICIES];
+        vertices = new Vector4[NUM_VERTICES];
 
-        for (int i = 0; i < NUM_VERTICIES; i++) {
-            vertices[i] = new Vector3(other.vertices[i]);
+        for (int i = 0; i < NUM_VERTICES; i++) {
+            vertices[i] = new Vector4(other.vertices[i]);
         }
     }
 
-    public Triangle(Vector3 a, Vector3 b, Vector3 c) {
-        vertices = new Vector3[] {a, b, c};
+    public Triangle(Vector4 a, Vector4 b, Vector4 c) {
+        vertices = new Vector4[] { a, b, c };
     }
 
     public Triangle(float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz) {
-        vertices = new Vector3[] {new Vector3(ax, ay, az), new Vector3(bx, by, bz), new Vector3(cx, cy, cz)};
+        vertices = new Vector4[] { new Vector4(ax, ay, az), new Vector4(bx, by, bz), new Vector4(cx, cy, cz) };
     }
 
-    // Compare based on the midpoint of the z value to give an approximation of which triangle is farther than the player
+    // Compare based on the midpoint of the z value to give an approximation of
+    // which triangle is farther than the player
     @Override
     public int compareTo(Triangle o) {
         float thisAvg = (vertices[0].z + vertices[1].z + vertices[2].z) / 3.0f;
